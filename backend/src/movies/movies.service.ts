@@ -5,11 +5,7 @@ import { ApiError, isUniqueViolation } from '../common/api-error';
 import { Movie, MoviePrerequisite } from './movie.entity';
 import { CreateMovieDto, MovieView, RewatchOrderView, UpdateMovieDto } from './movie.dto';
 
-/**
- * Any write that changes the dependency graph takes this transaction-scoped
- * Postgres advisory lock, so two concurrent updates cannot each pass the
- * cycle check and together create a cycle.
- */
+
 const GRAPH_LOCK_KEY = 4_200_001;
 
 @Injectable()
@@ -36,8 +32,7 @@ export class MoviesService {
     const id = await this.write(async (em) => {
       await this.assertTitleFree(em, dto.title);
       await this.assertMoviesExist(em, prerequisiteIds);
-      // A brand-new movie has no dependents yet, so its prerequisites can
-      // never form a cycle — no cycle check is needed on create.
+      
       const movie = await em.getRepository(Movie).save(
         em.getRepository(Movie).create({
           title: dto.title,
@@ -99,8 +94,7 @@ export class MoviesService {
     const target = byId.get(id);
     if (!target) throw this.notFound(id);
 
-    // Explore prerequisites oldest-first, so among valid orders we return the
-    // one closest to release order (stable, predictable output).
+    
     const graph = buildGraph(links, (a, b) => compareByRelease(byId.get(a)!, byId.get(b)!));
     const ordered = getRewatchOrder(graph, id).map((movieId) => byId.get(movieId)!);
 
@@ -121,9 +115,7 @@ export class MoviesService {
     };
   }
 
-  // ---------------------------------------------------------------- helpers
-
-  /** Runs a graph-changing write in a transaction holding the graph lock. */
+   
   private async write<T>(work: (em: EntityManager) => Promise<T>): Promise<T> {
     try {
       return await this.dataSource.transaction(async (em) => {
@@ -131,7 +123,7 @@ export class MoviesService {
         return work(em);
       });
     } catch (err) {
-      // Backstop for the unique index (e.g. a race between two creates).
+     
       if (isUniqueViolation(err)) {
         throw new ApiError(HttpStatus.CONFLICT, 'DUPLICATE_TITLE', 'A movie with this title already exists');
       }

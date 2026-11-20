@@ -24,7 +24,7 @@ export function MoviesView() {
     void load()
   }, [load])
 
-  // Runs a change, shows its error (if any) and reloads the list.
+
   const run = async (action: () => Promise<unknown>, done?: string) => {
     setActionError(null)
     setFlash(null)

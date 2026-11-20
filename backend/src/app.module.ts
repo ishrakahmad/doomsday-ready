@@ -22,7 +22,7 @@ class HealthController {
       url: process.env.DATABASE_URL ?? 'postgres://doomsday:doomsday@localhost:5432/doomsday',
       entities: [Movie, MoviePrerequisite, Cinema],
       migrations: [InitialSchema1732100000000],
-      migrationsRun: true, // schema is created/updated by migrations on startup
+      migrationsRun: true, // schema is created
       synchronize: false,
     }),
     MoviesModule,

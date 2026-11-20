@@ -5,11 +5,11 @@ interface Props {
   movies: Array<MovieRef & { releaseYear: number }>
   selected: number[]
   onChange: (ids: number[]) => void
-  /** The movie being edited — it can't be its own prerequisite. */
+  
   excludeId?: number
 }
 
-/** Checkbox list for choosing which movies to watch first. */
+
 export function PrerequisitePicker({ movies, selected, onChange, excludeId }: Props) {
   const [filter, setFilter] = useState('')
   const id = useId()

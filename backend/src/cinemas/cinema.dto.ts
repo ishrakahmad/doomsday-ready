@@ -50,8 +50,8 @@ export interface BookingQuoteView {
   cinema: CinemaView;
   groupSize: number;
   possible: boolean;
-  /** Fewest bundles that add up to exactly groupSize; null when not possible. */
+  
   totalBundles: number | null;
-  /** How many of each size to buy, largest size first. Empty when not possible. */
+
   bundles: BundleLine[];
 }

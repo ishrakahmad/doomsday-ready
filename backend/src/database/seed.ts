@@ -3,11 +3,7 @@ import { DataSource } from 'typeorm';
 import { Cinema } from '../cinemas/cinema.entity';
 import { Movie, MoviePrerequisite } from '../movies/movie.entity';
 
-/**
- * Sample data from the assessment, so the app is usable straight away.
- * Runtimes are the theatrical runtimes; Avengers: Doomsday is unreleased,
- * so its runtime is a placeholder.
- */
+
 const SAMPLE_MOVIES: Array<{ title: string; releaseYear: number; runtime: number; after: string[] }> = [
   { title: 'Iron Man', releaseYear: 2008, runtime: 126, after: [] },
   { title: 'Captain America: The First Avenger', releaseYear: 2011, runtime: 124, after: [] },
@@ -29,7 +25,7 @@ const SAMPLE_MOVIES: Array<{ title: string; releaseYear: number; runtime: number
   { title: 'Avengers: Doomsday', releaseYear: 2026, runtime: 150, after: ['Avengers: Endgame'] },
 ];
 
-/** One cinema per booking example in the assessment. */
+
 const SAMPLE_CINEMAS: Array<{ name: string; bundleSizes: number[] }> = [
   { name: 'Aurora Cinema', bundleSizes: [1, 3, 4] },
   { name: 'Meridian Screens', bundleSizes: [2, 5] },
@@ -61,7 +57,7 @@ export async function seedSampleData(dataSource: DataSource, logger?: Logger): P
   });
 }
 
-/** Seeds an empty database on startup when SEED_ON_START=true. */
+
 @Injectable()
 export class SeedOnStart implements OnApplicationBootstrap {
   private readonly logger = new Logger('Seed');

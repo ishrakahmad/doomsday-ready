@@ -12,7 +12,7 @@ import {
 } from 'class-validator';
 import { Trim } from '../common/trim';
 
-export const MIN_RELEASE_YEAR = 1888; // first known motion picture
+export const MIN_RELEASE_YEAR = 1888; 
 export const MAX_RELEASE_YEAR = 2100;
 
 export class CreateMovieDto {
@@ -36,7 +36,7 @@ export class CreateMovieDto {
   @IsBoolean()
   watched?: boolean;
 
-  /** Ids of movies to watch first. Duplicates are ignored. */
+  
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(1000)
@@ -45,7 +45,6 @@ export class CreateMovieDto {
   prerequisiteIds?: number[];
 }
 
-/** Every field is optional; `prerequisiteIds`, when sent, replaces the whole list. */
 export class UpdateMovieDto {
   @IsOptional()
   @Trim()
@@ -106,6 +105,6 @@ export interface RewatchOrderView {
   totalCount: number;
   watchedCount: number;
   unwatchedCount: number;
-  /** Total runtime, in minutes, of the movies in the list that are not watched yet. */
+
   unwatchedRuntime: number;
 }

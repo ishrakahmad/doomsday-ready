@@ -1,9 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Initial schema. The database repeats the most important rules as
- * constraints, so bad data cannot get in even if a bug slips past the API.
- */
+
 export class InitialSchema1732100000000 implements MigrationInterface {
   name = 'InitialSchema1732100000000';
 

@@ -10,7 +10,7 @@ interface Props {
   onCancel?: () => void
 }
 
-/** Shared form for adding and editing a movie. */
+
 export function MovieForm({ allMovies, initial, submitLabel, onSubmit, onCancel }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [releaseYear, setReleaseYear] = useState(initial ? String(initial.releaseYear) : '')

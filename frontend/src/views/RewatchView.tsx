@@ -14,7 +14,7 @@ export function RewatchView() {
       .listMovies()
       .then((list) => {
         setMovies(list)
-        // Default to the newest movie — usually the one you're catching up for.
+      
         const newest = [...list].sort((a, b) => b.releaseYear - a.releaseYear || b.id - a.id)[0]
         if (newest) setTargetId(newest.id)
       })
@@ -35,7 +35,7 @@ export function RewatchView() {
   }, [targetId, loadPlan])
 
   const toggle = async (id: number, watched: boolean) => {
-    // Show the change straight away; the reload below brings the server's numbers.
+   
     setPlan((current) => {
       if (!current) return current
       const list = current.movies.map((m) => (m.id === id ? { ...m, watched } : m))

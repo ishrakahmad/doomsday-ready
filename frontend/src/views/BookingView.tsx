@@ -3,7 +3,7 @@ import { api, errorMessage, type BookingQuote, type Cinema } from '../api'
 import { Notice } from '../components/Notice'
 import { joinTitles, plural } from '../format'
 
-/** Draw individual seats only while the picture stays readable. */
+
 const MAX_DRAWN_SEATS = 160
 
 export function BookingView() {
@@ -134,7 +134,7 @@ function QuoteResult({ quote }: { quote: BookingQuote }) {
   }
 
   const drawSeats = quote.groupSize <= MAX_DRAWN_SEATS
-  // One entry per bundle to buy, largest first.
+
   const blocks = quote.bundles.flatMap((b) => Array.from({ length: b.count }, () => b.size))
 
   return (

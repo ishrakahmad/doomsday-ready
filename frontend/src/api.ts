@@ -1,5 +1,4 @@
-// Thin client for the Doomsday Ready API. All requests go to /api
-// (proxied to the backend by Vite in development and by nginx in Docker).
+
 
 export interface MovieRef {
   id: number
@@ -46,7 +45,7 @@ export interface BookingQuote {
   bundles: Array<{ size: number; count: number }>
 }
 
-/** Error returned by the API: `{ statusCode, error, message }`. */
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: string

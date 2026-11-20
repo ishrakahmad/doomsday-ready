@@ -27,7 +27,7 @@ export class CinemasController {
     return this.cinemas.remove(id);
   }
 
-  /** GET /api/cinemas/:id/booking?groupSize=6 */
+
   @Get(':id/booking')
   booking(@Param('id', ParseIntPipe) id: number, @Query() query: BookingQueryDto) {
     return this.cinemas.quote(id, query.groupSize);
