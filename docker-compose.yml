@@ -1,0 +1,39 @@
+# One command to run everything:  docker compose up --build
+# App:  http://localhost:8080      API:  http://localhost:3000/api
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: doomsday
+      POSTGRES_PASSWORD: doomsday
+      POSTGRES_DB: doomsday
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U doomsday -d doomsday"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://doomsday:doomsday@db:5432/doomsday
+      SEED_ON_START: "true" # loads the sample movies and cinemas into an empty database
+      PORT: "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+
+volumes:
+  db-data:
