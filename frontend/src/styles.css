@@ -1,0 +1,802 @@
+/* Doomsday Ready — design tokens
+   Screen silver base, navy ink, velvet seat red for actions and booked seats,
+   marquee-bulb amber for anything "watched". */
+:root {
+  --screen: #e9ecf2;
+  --surface: #ffffff;
+  --ink: #1b2140;
+  --slate: #5a6283;
+  --line: #c9cedc;
+  --line-soft: #e1e5ee;
+  --velvet: #8e1b2e;
+  --velvet-dark: #6f1323;
+  --velvet-tint: #f6e4e7;
+  --bulb: #f2b33d;
+  --bulb-dark: #c98a12;
+  --ink-tint: #e3e8f4;
+
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+
+  --radius-control: 6px;
+  --radius-panel: 10px;
+
+  color: var(--ink);
+  background: var(--screen);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+p,
+ul,
+ol,
+fieldset {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: var(--velvet);
+  text-underline-offset: 3px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ masthead */
+
+.masthead {
+  background: var(--ink);
+  color: #fff;
+}
+
+.masthead-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.masthead :focus-visible {
+  outline-color: var(--bulb);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  color: #fff;
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.625rem;
+  letter-spacing: 0.01em;
+}
+
+.brand-seats {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.brand-seats i {
+  width: 9px;
+  height: 12px;
+  border-radius: 3px 3px 1.5px 1.5px;
+  background: var(--velvet);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.18);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: #c3c8dd;
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+  border-top: 3px solid transparent;
+  min-height: 48px;
+}
+
+.tab:hover {
+  color: #fff;
+}
+
+.tab[aria-current='page'] {
+  color: #fff;
+  border-bottom-color: var(--bulb);
+}
+
+/* ---------------------------------------------------------------- page */
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+.view-head {
+  margin-bottom: 24px;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.5rem;
+  line-height: 1.1;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.view-sub {
+  margin-top: 6px;
+  color: var(--slate);
+  max-width: 60ch;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 40px;
+  align-items: start;
+}
+
+.narrow {
+  max-width: 720px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  padding: 24px;
+}
+
+.split-side {
+  position: sticky;
+  top: 24px;
+}
+
+.split-side h2 {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+  .split-side {
+    position: static;
+  }
+}
+
+.loading {
+  color: var(--slate);
+}
+
+.empty {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-panel);
+  padding: 28px 24px;
+  color: var(--slate);
+  max-width: 60ch;
+}
+
+/* ------------------------------------------------------------ controls */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > span,
+.picker legend {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--slate);
+}
+
+.field input,
+.field select,
+.picker-filter {
+  width: 100%;
+  height: 46px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-control);
+}
+
+.field input:hover,
+.field select:hover {
+  border-color: var(--slate);
+}
+
+.field-help {
+  color: var(--slate);
+  font-size: 0.8125rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: var(--radius-control);
+  border: 1.5px solid transparent;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.btn-primary {
+  background: var(--velvet);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--velvet-dark);
+}
+
+.btn-quiet {
+  background: transparent;
+  border-color: var(--line);
+  padding: 6px 12px;
+  font-size: 0.875rem;
+}
+
+.btn-quiet:hover {
+  border-color: var(--ink);
+}
+
+.btn-danger {
+  color: var(--velvet);
+}
+
+.btn-danger:hover {
+  border-color: var(--velvet);
+}
+
+/* Watched checkbox: amber when ticked, everywhere in the app. */
+input[type='checkbox'] {
+  appearance: none;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid var(--slate);
+  border-radius: 5px;
+  background: var(--surface);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+input[type='checkbox']::after {
+  content: '';
+  width: 6px;
+  height: 11px;
+  border: solid var(--ink);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+  opacity: 0;
+}
+
+input[type='checkbox']:checked {
+  background: var(--bulb);
+  border-color: var(--bulb-dark);
+}
+
+input[type='checkbox']:checked::after {
+  opacity: 1;
+}
+
+/* -------------------------------------------------------------- notices */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-control);
+  border-left: 4px solid;
+}
+
+.notice-error {
+  background: var(--velvet-tint);
+  border-color: var(--velvet);
+}
+
+.notice-info {
+  background: var(--ink-tint);
+  border-color: var(--ink);
+}
+
+.notice-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* ---------------------------------------------------------------- movies */
+
+.movie-list {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+
+.movie-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  padding: 16px 20px;
+}
+
+.movie-row + .movie-row {
+  border-top: 1px solid var(--line-soft);
+}
+
+.watch-toggle {
+  padding-top: 2px;
+}
+
+.movie-title {
+  font-weight: 600;
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+.movie-meta {
+  color: var(--slate);
+  font-size: 0.9375rem;
+}
+
+.movie-prereqs {
+  margin-top: 4px;
+  font-size: 0.9375rem;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.movie-row:has(.movie-edit) {
+  display: block;
+  background: #f7f8fb;
+}
+
+.edit-title {
+  margin-bottom: 16px;
+  font-size: 1.25rem;
+}
+
+.movie-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+}
+
+@media (max-width: 560px) {
+  .movie-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .row-actions {
+    grid-column: 2;
+  }
+}
+
+/* Prerequisite picker */
+
+.picker {
+  border: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.picker legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.picker-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.picker-list li + li {
+  border-top: 1px solid var(--line-soft);
+}
+
+.picker-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.picker-list label:hover {
+  background: #f4f5f9;
+}
+
+.picker-year {
+  margin-left: auto;
+  color: var(--slate);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.picker-empty,
+.picker-count {
+  color: var(--slate);
+  font-size: 0.875rem;
+}
+
+/* --------------------------------------------------------- rewatch plan */
+
+.target-select {
+  max-width: 480px;
+  margin-bottom: 32px;
+}
+
+.progress-block {
+  margin-bottom: 28px;
+}
+
+.progress-figures {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+}
+
+.figure-right {
+  text-align: right;
+}
+
+.figure-num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.25rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure-label {
+  color: var(--slate);
+}
+
+.progress {
+  height: 12px;
+  border-radius: 6px;
+  background: #d5dae6;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--bulb);
+  border-radius: 6px;
+  transition: width 400ms ease;
+}
+
+/* The plan really is a sequence, so it is numbered and joined by a line. */
+.plan-list {
+  position: relative;
+}
+
+.plan-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.plan-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 50%;
+  height: 100%;
+  width: 2px;
+  background: var(--line);
+}
+
+.plan-step {
+  position: relative;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--screen);
+  display: grid;
+  place-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.plan-item.is-watched .plan-step {
+  background: var(--bulb);
+  border-color: var(--bulb-dark);
+}
+
+.plan-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.plan-title {
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.plan-item.is-watched .plan-title {
+  color: var(--slate);
+}
+
+.plan-meta {
+  color: var(--slate);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.plan-target .plan-step {
+  background: var(--velvet);
+  border-color: var(--velvet);
+  color: #fff;
+  font-size: 1rem;
+}
+
+.plan-target .plan-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+@media (max-width: 560px) {
+  .plan-item {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .plan-meta {
+    grid-column: 2;
+    text-align: left;
+    margin-top: -12px;
+  }
+}
+
+/* --------------------------------------------------------------- booking */
+
+.quote-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px auto;
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 32px;
+}
+
+.bundle-hint {
+  grid-column: 1 / -1;
+  color: var(--slate);
+  margin-top: -6px;
+}
+
+@media (max-width: 560px) {
+  .quote-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cinema-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quote {
+  border-top: 3px solid var(--ink);
+  padding-top: 20px;
+}
+
+.quote-headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.quote-none .quote-headline {
+  color: var(--velvet);
+}
+
+.quote-detail {
+  margin-top: 8px;
+  color: var(--slate);
+  max-width: 60ch;
+}
+
+.quote-lines {
+  margin-top: 20px;
+  max-width: 420px;
+}
+
+.quote-lines li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 1.125rem;
+}
+
+.quote-count {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.quote-sub {
+  color: var(--slate);
+  font-size: 0.9375rem;
+}
+
+/* The seat map: every bundle drawn as a block of seats. */
+.seat-map {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.seat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: seat-in 320ms ease both;
+}
+
+.seat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-width: calc(10 * 15px + 2 * 7px);
+  padding: 7px;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-control);
+}
+
+.seat-caption {
+  font-size: 0.8125rem;
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.seat {
+  width: 12px;
+  height: 14px;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--velvet);
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.16);
+}
+
+@keyframes seat-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat-block {
+    animation: none;
+  }
+  .progress-fill {
+    transition: none;
+  }
+}
+
+/* In the prerequisite picker a tick means "selected", not "watched", so it uses ink instead of amber. */
+.picker input[type='checkbox']:checked {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.picker input[type='checkbox']:checked::after {
+  border-color: #fff;
+}
