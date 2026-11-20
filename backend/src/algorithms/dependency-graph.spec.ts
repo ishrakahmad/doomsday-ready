@@ -1,6 +1,6 @@
 import { CycleDetectedError, getRewatchOrder, wouldCreateCycle } from './dependency-graph';
 
-// Sample data from the assessment PDF.
+
 const IRON_MAN = 1;
 const FIRST_AVENGER = 2;
 const AVENGERS = 3;
@@ -22,7 +22,7 @@ const sampleGraph = (): Map<number, number[]> =>
     [DOOMSDAY, [ENDGAME]],
   ]);
 
-/** Every movie in `order` appears after all of its prerequisites. */
+
 function expectValidOrder(graph: Map<number, number[]>, order: number[]) {
   const position = new Map(order.map((id, i) => [id, i]));
   for (const id of order) {
@@ -41,7 +41,7 @@ describe('getRewatchOrder', () => {
       new Set([IRON_MAN, FIRST_AVENGER, AVENGERS, CIVIL_WAR, RAGNAROK, INFINITY_WAR, ENDGAME]),
     );
     expectValidOrder(graph, order);
-    // With prerequisites listed as in the PDF we get exactly the PDF's example order.
+    
     expect(order).toEqual([IRON_MAN, FIRST_AVENGER, AVENGERS, CIVIL_WAR, RAGNAROK, INFINITY_WAR, ENDGAME]);
   });
 
@@ -57,7 +57,7 @@ describe('getRewatchOrder', () => {
   });
 
   it('lists a shared prerequisite only once (diamond)', () => {
-    // 4 needs 2 and 3; both need 1.
+    
     const graph = new Map([
       [1, []],
       [2, [1]],
@@ -110,7 +110,7 @@ describe('wouldCreateCycle', () => {
   });
 
   it('ignores the movie\'s own old prerequisites (they are being replaced)', () => {
-    // Infinity War currently needs Civil War; replacing that with Ragnarok is fine.
+   
     expect(wouldCreateCycle(sampleGraph(), INFINITY_WAR, [RAGNAROK])).toBe(false);
   });
 
