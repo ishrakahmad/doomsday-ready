@@ -2,9 +2,9 @@
 
 A full-stack app that helps MCU fans plan their rewatch before *Avengers: Doomsday* and book an opening night watch party.
 
-- **Movies**: add movies, link them with prerequisites, tick them off as watched.
+- **Movies**: add movies link them with prerequisites tick them off as watched.
 - **Rewatch plan**: pick a movie and get everything you need to see first, in an order that respects every prerequisite with progress and remaining watch time.
-- **Booking**: pick a cinema and a group size and get the fewest seat bundles that seat the group exactly, or "not possible".
+- **Booking**: pick a cinema and a group size and get the fewest seat bundles that seat the group exactly or "not possible".
 
 **Stack:** NestJS 11 + TypeORM + PostgreSQL 16 (API), React 19 + Vite + TypeScript (UI), Docker Compose.
 
@@ -70,7 +70,7 @@ Every expected result from the assessment is covered by both suites:
 | Bundles 6, 9, 20 / group 44 → 4 bundles: 20 × 1, 9 × 2, 6 × 1 | ✓ | ✓ |
 | Bundles 4, 6 / group 7 → not possible | ✓ | ✓ |
 
-The unit tests also cover diamonds (a shared prerequisite listed once), a 50,000-movie chain (no stack overflow), the largest booking input (10,000 seats, 10 sizes), and a randomised check of the booking quote against a brute-force reference. The e2e tests cover validation, duplicates, unknown ids and status codes.
+The unit tests also check that a movie can't be its own prerequisite.
 
 ---
 
@@ -87,9 +87,8 @@ doomsday-ready/
 │   │   ├── movies/                ← entity, DTOs, service, controller
 │   │   ├── cinemas/
 │   │   ├── database/              ← migration + sample data
-│   │   ├── common/                ← error format
 │   │   ├── app.module.ts
-│   │   ├── setup-app.ts           ← /api prefix, validation, error filter
+│   │   ├── setup-app.ts           ← /api prefix and validation
 │   │   └── main.ts
 │   └── test/app.e2e-spec.ts
 └── frontend/
@@ -131,9 +130,9 @@ erDiagram
     }
 ```
 
-- **Prerequisites are a self-referencing many-to-many relationship.** Each row in `movie_prerequisites` is one edge of a directed graph: "watch `prerequisite_id` before `movie_id`". The composite primary key prevents duplicate edges, `CHECK (movie_id <> prerequisite_id)` blocks the simplest cycle at the database level, and `ON DELETE CASCADE` removes edges when a movie is deleted. Longer cycles are prevented by the API (see below).
+- **Prerequisites are a self-referencing many-to-many relationship.** Each row in `movie_prerequisites` is one edge of a directed graph: "watch `prerequisite_id` before `movie_id`". The composite primary key prevents duplicate edges, and `ON DELETE CASCADE` removes edges when a movie is deleted. Cycles are prevented by the API (see below).
 - **Bundle sizes are a PostgreSQL integer array**, because they are always read and written together with their cinema and never queried on their own.
-- Uniqueness is enforced by unique indexes on `lower(title)` and `lower(name)`, and the main range rules are repeated as `CHECK` constraints, so bad data cannot get in even if a bug slips past the API.
+- Titles and cinema names have a `UNIQUE` constraint. The API also checks them case-insensitively before saving. Value ranges (runtime, bundle sizes, group size) are checked by the API's validation.
 
 ---
 
@@ -238,20 +237,19 @@ When no exact combination exists: `"possible": false, "totalBundles": null, "bun
 
 ### Errors
 
-Every error has the same shape:
+Errors use NestJS's standard shape `{ "statusCode", "error", "message" }`. The app-specific errors have their own `error` code:
 
 ```json
-{ "statusCode": 409, "error": "CIRCULAR_DEPENDENCY", "message": "This change would make the movie depend on itself, directly or through other movies" }
+{ "statusCode": 409, "error": "CIRCULAR_DEPENDENCY", "message": "This would make the movie depend on itself through its prerequisites. Remove the movie that leads back to it." }
 ```
 
 | Status | `error` | When |
 |---|---|---|
-| 400 | `VALIDATION_ERROR` | Body or query fails validation (`message` lists every problem), or an unknown field is sent |
-| 400 | `UNKNOWN_PREREQUISITE` | A prerequisite id doesn't exist |
-| 400 | `BAD_REQUEST` | Non-numeric id in the path |
-| 404 | `MOVIE_NOT_FOUND` / `CINEMA_NOT_FOUND` | Unknown id |
-| 409 | `DUPLICATE_TITLE` / `DUPLICATE_NAME` | Title or name already used (case-insensitive) |
 | 409 | `CIRCULAR_DEPENDENCY` | The change would make a movie depend on itself |
+| 409 | `DUPLICATE_TITLE` / `DUPLICATE_NAME` | Title or name already used (case-insensitive) |
+| 400 | `UNKNOWN_PREREQUISITE` | A prerequisite id doesn't exist |
+| 400 | `Bad Request` | Validation failed (`message` lists the problems) or the id isn't a number |
+| 404 | `Not Found` | Unknown movie or cinema id |
 
 ---
 
@@ -263,15 +261,13 @@ Both are written from scratch in `backend/src/algorithms/`, with no graph or opt
 
 Movies and prerequisites form a directed graph with an edge `movie → prerequisite`.
 
-**Cycle check** (`wouldCreateCycle`): giving movie *M* a new list of prerequisites creates a cycle exactly when *M* can be reached by following prerequisite edges from one of the new prerequisites. A movie listing itself is the direct case. An iterative depth-first search from the new prerequisites answers this and stops as soon as it meets *M*. *M*'s old prerequisites are never followed, which is correct because an update replaces them. **O(V + E).**
+**Cycle check** (`wouldCreateCycle`): giving movie *M* a new list of prerequisites creates a cycle exactly when *M* can be reached by following prerequisite edges from one of the new prerequisites. A movie listing itself is the direct case. A recursive depth-first search from the new prerequisites answers this and stops as soon as it meets *M*. *M*'s old prerequisites are never followed, which is correct because an update replaces them. **O(V + E).**
 
 The check only runs on `PATCH`. A new movie has nothing depending on it yet, so `POST` can never create a cycle.
 
-All writes that change the graph take a transaction-scoped PostgreSQL advisory lock. Without it, two concurrent updates could each pass the check on their own and together form a cycle.
+**Rewatch order** (`getRewatchOrder`): a post-order depth-first search from the target. A movie is added to the list only after all of its prerequisites have been added. That places every movie after its prerequisites (a topological sort limited to the target's ancestors), and a visited set keeps each movie in the list exactly once. The target finishes last and is dropped. **O(V + E).**
 
-**Rewatch order** (`getRewatchOrder`): a post-order depth-first search from the target. A movie is added to the list only after all of its prerequisites have been added. That places every movie after its prerequisites (a topological sort limited to the target's ancestors), and a visited set keeps each movie in the list exactly once. The target finishes last and is dropped. The DFS uses an explicit stack, so very long chains cannot overflow the call stack. **O(V + E).**
-
-Many orders can be valid. To make the output stable and natural, the service explores prerequisites oldest-first (by release year). For the sample data this gives exactly the order shown in the assessment.
+Many orders can be valid. The service visits prerequisites in the order the movies were added (by id), so the output is stable. For the sample data this gives exactly the order shown in the assessment.
 
 ### Feature 2: booking quote
 
@@ -283,11 +279,11 @@ Finding the fewest bundles that add up to exactly *n* seats, with unlimited bund
 So `quoteBundles` uses bottom-up **dynamic programming**:
 
 ```
-dp[0] = 0
-dp[s] = min over bundle sizes b ≤ s of dp[s − b] + 1      (∞ if no size fits)
+best[0] = 0
+best[s] = min over bundle sizes b ≤ s of best[s − b] + 1      (∞ if no size fits)
 ```
 
-`last[s]` remembers which bundle size gave the best value for `s`. Walking `last` back from `n` to `0` rebuilds how many of each size to buy. **O(n × k)** time and **O(n)** space. For the largest allowed input (n = 10,000, k = 10) that is 100,000 steps, effectively instant. On ties the larger bundle wins, so the answer is deterministic.
+`lastSize[s]` remembers which bundle size gave the best value for `s`. Walking `lastSize` back from `n` to `0` rebuilds how many of each size to buy. **O(n × k)** time and **O(n)** space. For the largest allowed input (n = 10,000, k = 10) that is 100,000 steps, effectively instant.
 
 ---
 
@@ -309,12 +305,12 @@ dp[s] = min over bundle sizes b ≤ s of dp[s − b] + 1      (∞ if no size fi
 
 ## AI usage
 
-This project was built with **Claude (Anthropic)**, an AI assistant, which:
+This project was built with **Claude**, an AI assistant. Claude:
 
 - read the brief and pointed out where it was ambiguous (for example the release-year range),
-- wrote the code: backend, tests, frontend, Docker setup,
+- wrote the code, the tests, the frontend and the Docker setup,
 - wrote this README.
 
-I reviewed the code, ran the unit and e2e tests and the app, and checked every expected result in the brief against the actual output.
 
 
+I ran the app and the tests and checked every expected result in the brief against the actual output.

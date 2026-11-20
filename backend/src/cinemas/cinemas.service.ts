@@ -1,71 +1,75 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { quoteBundles } from '../algorithms/bundle-quote';
-import { ApiError, isUniqueViolation } from '../common/api-error';
-import { Cinema } from './cinema.entity';
 import { BookingQuoteView, CinemaView, CreateCinemaDto } from './cinema.dto';
+import { Cinema } from './cinema.entity';
 
 @Injectable()
 export class CinemasService {
   constructor(@InjectRepository(Cinema) private readonly cinemas: Repository<Cinema>) {}
 
   async create(dto: CreateCinemaDto): Promise<CinemaView> {
-    const clash = await this.cinemas
-      .createQueryBuilder('c')
-      .where('lower(c.name) = lower(:name)', { name: dto.name })
-      .getExists();
-    if (clash) throw this.duplicate(dto.name);
-
-    try {
-      const saved = await this.cinemas.save(
-        this.cinemas.create({
-          name: dto.name,
-          bundleSizes: [...dto.bundleSizes].sort((a, b) => a - b),
-        }),
-      );
-      return toView(saved);
-    } catch (err) {
-      if (isUniqueViolation(err)) throw this.duplicate(dto.name);
-      throw err;
+    const name = dto.name.trim();
+    if (!name) {
+      throw new BadRequestException('name should not be empty');
     }
+
+    
+    const existing = await this.cinemas
+      .createQueryBuilder('cinema')
+      .where('LOWER(cinema.name) = LOWER(:name)', { name })
+      .getOne();
+    if (existing) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'DUPLICATE_NAME',
+        message: `A cinema named "${name}" already exists`,
+      });
+    }
+
+    const bundleSizes = [...dto.bundleSizes].sort((a, b) => a - b);
+    const cinema = await this.cinemas.save({ name, bundleSizes });
+    return this.toView(cinema);
   }
 
   async findAll(): Promise<CinemaView[]> {
-    const all = await this.cinemas.find({ order: { name: 'ASC' } });
-    return all.map(toView);
+    const cinemas = await this.cinemas.find({ order: { name: 'ASC' } });
+    return cinemas.map((cinema) => this.toView(cinema));
   }
 
   async findOne(id: number): Promise<CinemaView> {
-    return toView(await this.get(id));
+    return this.toView(await this.getCinema(id));
   }
 
   async remove(id: number): Promise<void> {
-    const result = await this.cinemas.delete({ id });
-    if (!result.affected) throw this.notFound(id);
+    const result = await this.cinemas.delete(id);
+    if (!result.affected) {
+      throw new NotFoundException(`Cinema ${id} not found`);
+    }
   }
 
   async quote(id: number, groupSize: number): Promise<BookingQuoteView> {
-    const cinema = await this.get(id);
-    const quote = quoteBundles(cinema.bundleSizes, groupSize);
-    return { cinema: toView(cinema), groupSize, ...quote };
+    const cinema = await this.getCinema(id);
+    const result = quoteBundles(cinema.bundleSizes, groupSize);
+    return {
+      cinema: this.toView(cinema),
+      groupSize,
+      possible: result.possible,
+      totalBundles: result.totalBundles,
+      bundles: result.bundles,
+    };
   }
 
-  private async get(id: number): Promise<Cinema> {
+  private async getCinema(id: number): Promise<Cinema> {
     const cinema = await this.cinemas.findOneBy({ id });
-    if (!cinema) throw this.notFound(id);
+    if (!cinema) {
+      throw new NotFoundException(`Cinema ${id} not found`);
+    }
     return cinema;
   }
 
-  private notFound(id: number) {
-    return new ApiError(HttpStatus.NOT_FOUND, 'CINEMA_NOT_FOUND', `Cinema ${id} not found`);
+  private toView(cinema: Cinema): CinemaView {
+    return { id: cinema.id, name: cinema.name, bundleSizes: cinema.bundleSizes };
   }
-
-  private duplicate(name: string) {
-    return new ApiError(HttpStatus.CONFLICT, 'DUPLICATE_NAME', `A cinema named "${name}" already exists`);
-  }
-}
-
-function toView({ id, name, bundleSizes }: Cinema): CinemaView {
-  return { id, name, bundleSizes };
 }

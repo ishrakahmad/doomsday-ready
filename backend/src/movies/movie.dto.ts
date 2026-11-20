@@ -10,13 +10,11 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { Trim } from '../common/trim';
 
-export const MIN_RELEASE_YEAR = 1888; 
+export const MIN_RELEASE_YEAR = 1888; // year of the first known film
 export const MAX_RELEASE_YEAR = 2100;
 
 export class CreateMovieDto {
-  @Trim()
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
@@ -45,9 +43,9 @@ export class CreateMovieDto {
   prerequisiteIds?: number[];
 }
 
+
 export class UpdateMovieDto {
   @IsOptional()
-  @Trim()
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)

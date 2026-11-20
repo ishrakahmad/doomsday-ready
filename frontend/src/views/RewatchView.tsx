@@ -14,8 +14,11 @@ export function RewatchView() {
       .listMovies()
       .then((list) => {
         setMovies(list)
-      
-        const newest = [...list].sort((a, b) => b.releaseYear - a.releaseYear || b.id - a.id)[0]
+
+        let newest = list[0]
+        for (const m of list) {
+          if (m.releaseYear >= newest.releaseYear) newest = m
+        }
         if (newest) setTargetId(newest.id)
       })
       .catch((err) => setError(errorMessage(err)))
@@ -35,25 +38,11 @@ export function RewatchView() {
   }, [targetId, loadPlan])
 
   const toggle = async (id: number, watched: boolean) => {
-   
-    setPlan((current) => {
-      if (!current) return current
-      const list = current.movies.map((m) => (m.id === id ? { ...m, watched } : m))
-      const unwatched = list.filter((m) => !m.watched)
-      return {
-        ...current,
-        movies: list,
-        watchedCount: list.length - unwatched.length,
-        unwatchedCount: unwatched.length,
-        unwatchedRuntime: unwatched.reduce((sum, m) => sum + m.runtime, 0),
-      }
-    })
     try {
       await api.updateMovie(id, { watched })
       if (targetId !== null) await loadPlan(targetId)
     } catch (err) {
       setError(errorMessage(err))
-      if (targetId !== null) await loadPlan(targetId)
     }
   }
 

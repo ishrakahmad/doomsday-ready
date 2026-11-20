@@ -3,17 +3,19 @@ import { BookingView } from './views/BookingView'
 import { MoviesView } from './views/MoviesView'
 import { RewatchView } from './views/RewatchView'
 
-const VIEWS = [
+type ViewId = 'movies' | 'rewatch' | 'booking'
+
+const VIEWS: { id: ViewId; label: string }[] = [
   { id: 'movies', label: 'Movies' },
   { id: 'rewatch', label: 'Rewatch plan' },
   { id: 'booking', label: 'Booking' },
-] as const
+]
 
-type ViewId = (typeof VIEWS)[number]['id']
 
-const fromHash = (): ViewId => {
+function fromHash(): ViewId {
   const id = window.location.hash.replace('#/', '')
-  return VIEWS.some((v) => v.id === id) ? (id as ViewId) : 'movies'
+  if (id === 'rewatch' || id === 'booking') return id
+  return 'movies'
 }
 
 export default function App() {

@@ -35,7 +35,6 @@ export function MoviesView() {
       return true
     } catch (err) {
       setActionError(errorMessage(err))
-      await load()
       return false
     }
   }
@@ -48,10 +47,7 @@ export function MoviesView() {
     if (await run(() => api.updateMovie(id, input), `Saved ${input.title}.`)) setEditingId(null)
   }
 
-  const toggleWatched = (m: Movie) => {
-    setMovies((list) => list?.map((x) => (x.id === m.id ? { ...x, watched: !m.watched } : x)) ?? list)
-    return run(() => api.updateMovie(m.id, { watched: !m.watched }))
-  }
+  const toggleWatched = (m: Movie) => run(() => api.updateMovie(m.id, { watched: !m.watched }))
 
   const remove = (m: Movie) => {
     if (window.confirm(`Delete ${m.title}? It will also be removed from other movies' prerequisites.`)) {
@@ -59,7 +55,12 @@ export function MoviesView() {
     }
   }
 
-  const watched = movies?.filter((m) => m.watched).length ?? 0
+  let watched = 0
+  if (movies) {
+    for (const m of movies) {
+      if (m.watched) watched++
+    }
+  }
 
   return (
     <div className="split">
@@ -88,7 +89,7 @@ export function MoviesView() {
         {movies && movies.length > 0 && (
           <ul className="movie-list">
             {movies.map((m) => (
-              <li key={m.id} className={`movie-row${m.watched ? ' is-watched' : ''}`}>
+              <li key={m.id} className={editingId === m.id ? 'movie-row is-editing' : 'movie-row'}>
                 {editingId === m.id ? (
                   <div className="movie-edit">
                     <h2 className="edit-title">Edit {m.title}</h2>

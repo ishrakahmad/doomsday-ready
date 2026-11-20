@@ -1,217 +1,216 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, In } from 'typeorm';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { getRewatchOrder, wouldCreateCycle } from '../algorithms/dependency-graph';
-import { ApiError, isUniqueViolation } from '../common/api-error';
-import { Movie, MoviePrerequisite } from './movie.entity';
 import { CreateMovieDto, MovieView, RewatchOrderView, UpdateMovieDto } from './movie.dto';
-
-
-const GRAPH_LOCK_KEY = 4_200_001;
+import { Movie, MoviePrerequisite } from './movie.entity';
 
 @Injectable()
 export class MoviesService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(Movie) private readonly movies: Repository<Movie>,
+    @InjectRepository(MoviePrerequisite) private readonly links: Repository<MoviePrerequisite>,
+    private readonly dataSource: DataSource,
+  ) {}
 
   async findAll(): Promise<MovieView[]> {
-    const { movies, links } = await this.loadAll(this.dataSource.manager);
-    const byId = new Map(movies.map((m) => [m.id, m]));
-    return movies.map((m) => this.toView(m, links, byId));
+    const movies = await this.movies.find({ order: { releaseYear: 'ASC', id: 'ASC' } });
+    const links = await this.links.find();
+    return movies.map((movie) => this.toView(movie, movies, links));
   }
 
   async findOne(id: number): Promise<MovieView> {
-    const { movies, links } = await this.loadAll(this.dataSource.manager);
-    const byId = new Map(movies.map((m) => [m.id, m]));
-    const movie = byId.get(id);
-    if (!movie) throw this.notFound(id);
-    return this.toView(movie, links, byId);
+    const movies = await this.findAll();
+    const movie = movies.find((m) => m.id === id);
+    if (!movie) {
+      throw new NotFoundException(`Movie ${id} not found`);
+    }
+    return movie;
   }
 
   async create(dto: CreateMovieDto): Promise<MovieView> {
-    const prerequisiteIds = unique(dto.prerequisiteIds ?? []);
+    const title = this.cleanTitle(dto.title);
+    await this.checkTitleIsFree(title);
 
-    const id = await this.write(async (em) => {
-      await this.assertTitleFree(em, dto.title);
-      await this.assertMoviesExist(em, prerequisiteIds);
-      
-      const movie = await em.getRepository(Movie).save(
-        em.getRepository(Movie).create({
-          title: dto.title,
-          releaseYear: dto.releaseYear,
-          runtime: dto.runtime,
-          watched: dto.watched ?? false,
-        }),
-      );
-      await this.insertLinks(em, movie.id, prerequisiteIds);
+    const prerequisiteIds = this.removeDuplicates(dto.prerequisiteIds ?? []);
+    await this.checkMoviesExist(prerequisiteIds);
+
+    const movieId = await this.dataSource.transaction(async (manager) => {
+      const movie = await manager.save(Movie, {
+        title,
+        releaseYear: dto.releaseYear,
+        runtime: dto.runtime,
+        watched: dto.watched ?? false,
+      });
+      for (const prerequisiteId of prerequisiteIds) {
+        await manager.save(MoviePrerequisite, { movieId: movie.id, prerequisiteId });
+      }
       return movie.id;
     });
 
-    return this.findOne(id);
+    return this.findOne(movieId);
   }
 
   async update(id: number, dto: UpdateMovieDto): Promise<MovieView> {
-    await this.write(async (em) => {
-      const repo = em.getRepository(Movie);
-      const movie = await repo.findOneBy({ id });
-      if (!movie) throw this.notFound(id);
+    const movie = await this.movies.findOneBy({ id });
+    if (!movie) {
+      throw new NotFoundException(`Movie ${id} not found`);
+    }
 
-      if (dto.title !== undefined && dto.title.toLowerCase() !== movie.title.toLowerCase()) {
-        await this.assertTitleFree(em, dto.title);
+    if (dto.title !== undefined) {
+      const title = this.cleanTitle(dto.title);
+      if (title.toLowerCase() !== movie.title.toLowerCase()) {
+        await this.checkTitleIsFree(title);
       }
+      movie.title = title;
+    }
+    if (dto.releaseYear !== undefined) movie.releaseYear = dto.releaseYear;
+    if (dto.runtime !== undefined) movie.runtime = dto.runtime;
+    if (dto.watched !== undefined) movie.watched = dto.watched;
 
-      if (dto.prerequisiteIds !== undefined) {
-        const prerequisiteIds = unique(dto.prerequisiteIds);
-        if (prerequisiteIds.includes(id)) throw this.circular();
-        await this.assertMoviesExist(em, prerequisiteIds);
+    let prerequisiteIds: number[] | undefined;
+    if (dto.prerequisiteIds !== undefined) {
+      prerequisiteIds = this.removeDuplicates(dto.prerequisiteIds);
+      await this.checkMoviesExist(prerequisiteIds);
 
-        const links = await em.getRepository(MoviePrerequisite).find();
-        if (wouldCreateCycle(buildGraph(links), id, prerequisiteIds)) throw this.circular();
-
-        await em.getRepository(MoviePrerequisite).delete({ movieId: id });
-        await this.insertLinks(em, id, prerequisiteIds);
+      const graph = this.buildGraph(await this.links.find());
+      if (wouldCreateCycle(graph, id, prerequisiteIds)) {
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'CIRCULAR_DEPENDENCY',
+          message:
+            'This would make the movie depend on itself through its prerequisites. Remove the movie that leads back to it.',
+        });
       }
+    }
 
-      const changes: Partial<Movie> = {};
-      if (dto.title !== undefined) changes.title = dto.title;
-      if (dto.releaseYear !== undefined) changes.releaseYear = dto.releaseYear;
-      if (dto.runtime !== undefined) changes.runtime = dto.runtime;
-      if (dto.watched !== undefined) changes.watched = dto.watched;
-      if (Object.keys(changes).length > 0) await repo.update({ id }, changes);
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.save(movie);
+      if (prerequisiteIds !== undefined) {
+        await manager.delete(MoviePrerequisite, { movieId: id });
+        for (const prerequisiteId of prerequisiteIds) {
+          await manager.save(MoviePrerequisite, { movieId: id, prerequisiteId });
+        }
+      }
     });
 
     return this.findOne(id);
   }
 
   async remove(id: number): Promise<void> {
-    await this.write(async (em) => {
-      const result = await em.getRepository(Movie).delete({ id });
-      if (!result.affected) throw this.notFound(id);
-    });
+    const result = await this.movies.delete(id);
+    if (!result.affected) {
+      throw new NotFoundException(`Movie ${id} not found`);
+    }
   }
 
   async rewatchOrder(id: number): Promise<RewatchOrderView> {
-    const { movies, links } = await this.loadAll(this.dataSource.manager);
-    const byId = new Map(movies.map((m) => [m.id, m]));
-    const target = byId.get(id);
-    if (!target) throw this.notFound(id);
+    const target = await this.movies.findOneBy({ id });
+    if (!target) {
+      throw new NotFoundException(`Movie ${id} not found`);
+    }
 
-    
-    const graph = buildGraph(links, (a, b) => compareByRelease(byId.get(a)!, byId.get(b)!));
-    const ordered = getRewatchOrder(graph, id).map((movieId) => byId.get(movieId)!);
+    const movies = await this.movies.find();
+    const links = await this.links.find({ order: { prerequisiteId: 'ASC' } });
+    const orderedIds = getRewatchOrder(this.buildGraph(links), id);
 
-    const unwatched = ordered.filter((m) => !m.watched);
+    const list = orderedIds.map((movieId) => movies.find((m) => m.id === movieId)!);
+
+    let watchedCount = 0;
+    let unwatchedRuntime = 0;
+    for (const movie of list) {
+      if (movie.watched) {
+        watchedCount++;
+      } else {
+        unwatchedRuntime += movie.runtime;
+      }
+    }
+
     return {
       target: { id: target.id, title: target.title },
-      movies: ordered.map(({ id, title, releaseYear, runtime, watched }) => ({
-        id,
-        title,
-        releaseYear,
-        runtime,
-        watched,
+      movies: list.map((m) => ({
+        id: m.id,
+        title: m.title,
+        releaseYear: m.releaseYear,
+        runtime: m.runtime,
+        watched: m.watched,
       })),
-      totalCount: ordered.length,
-      watchedCount: ordered.length - unwatched.length,
-      unwatchedCount: unwatched.length,
-      unwatchedRuntime: unwatched.reduce((sum, m) => sum + m.runtime, 0),
+      totalCount: list.length,
+      watchedCount,
+      unwatchedCount: list.length - watchedCount,
+      unwatchedRuntime,
     };
   }
 
-   
-  private async write<T>(work: (em: EntityManager) => Promise<T>): Promise<T> {
-    try {
-      return await this.dataSource.transaction(async (em) => {
-        await em.query('SELECT pg_advisory_xact_lock($1)', [GRAPH_LOCK_KEY]);
-        return work(em);
-      });
-    } catch (err) {
-     
-      if (isUniqueViolation(err)) {
-        throw new ApiError(HttpStatus.CONFLICT, 'DUPLICATE_TITLE', 'A movie with this title already exists');
+
+  private buildGraph(links: MoviePrerequisite[]): Map<number, number[]> {
+    const graph = new Map<number, number[]>();
+    for (const link of links) {
+      if (!graph.has(link.movieId)) {
+        graph.set(link.movieId, []);
       }
-      throw err;
+      graph.get(link.movieId)!.push(link.prerequisiteId);
     }
+    return graph;
   }
 
-  private async loadAll(em: EntityManager) {
-    const [movies, links] = await Promise.all([
-      em.getRepository(Movie).find({ order: { releaseYear: 'ASC', id: 'ASC' } }),
-      em.getRepository(MoviePrerequisite).find(),
-    ]);
-    return { movies, links };
-  }
-
-  private toView(movie: Movie, links: MoviePrerequisite[], byId: Map<number, Movie>): MovieView {
+  private toView(movie: Movie, allMovies: Movie[], links: MoviePrerequisite[]): MovieView {
     const prerequisites = links
-      .filter((l) => l.movieId === movie.id)
-      .map((l) => byId.get(l.prerequisiteId)!)
-      .sort(compareByRelease)
+      .filter((link) => link.movieId === movie.id)
+      .map((link) => allMovies.find((m) => m.id === link.prerequisiteId)!)
+      .sort((a, b) => a.releaseYear - b.releaseYear)
       .map((m) => ({ id: m.id, title: m.title }));
-    const { id, title, releaseYear, runtime, watched } = movie;
-    return { id, title, releaseYear, runtime, watched, prerequisites };
+
+    return {
+      id: movie.id,
+      title: movie.title,
+      releaseYear: movie.releaseYear,
+      runtime: movie.runtime,
+      watched: movie.watched,
+      prerequisites,
+    };
   }
 
-  private async assertTitleFree(em: EntityManager, title: string) {
-    const clash = await em
-      .getRepository(Movie)
-      .createQueryBuilder('m')
-      .where('lower(m.title) = lower(:title)', { title })
-      .getExists();
-    if (clash) {
-      throw new ApiError(HttpStatus.CONFLICT, 'DUPLICATE_TITLE', `A movie titled "${title}" already exists`);
+  private cleanTitle(title: string): string {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      throw new BadRequestException('title should not be empty');
+    }
+    return trimmed;
+  }
+
+  private async checkTitleIsFree(title: string) {
+    const existing = await this.movies
+      .createQueryBuilder('movie')
+      .where('LOWER(movie.title) = LOWER(:title)', { title })
+      .getOne();
+    if (existing) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'DUPLICATE_TITLE',
+        message: `A movie titled "${title}" already exists`,
+      });
     }
   }
 
-  private async assertMoviesExist(em: EntityManager, ids: number[]) {
+  private async checkMoviesExist(ids: number[]) {
     if (ids.length === 0) return;
-    const found = await em.getRepository(Movie).find({ select: { id: true }, where: { id: In(ids) } });
-    const foundIds = new Set(found.map((m) => m.id));
-    const missing = ids.filter((i) => !foundIds.has(i));
-    if (missing.length > 0) {
-      throw new ApiError(
-        HttpStatus.BAD_REQUEST,
-        'UNKNOWN_PREREQUISITE',
-        `Unknown prerequisite movie id(s): ${missing.join(', ')}`,
-      );
+    const found = await this.movies.findBy({ id: In(ids) });
+    if (found.length !== ids.length) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'UNKNOWN_PREREQUISITE',
+        message: 'One or more prerequisite movies do not exist',
+      });
     }
   }
 
-  private async insertLinks(em: EntityManager, movieId: number, prerequisiteIds: number[]) {
-    if (prerequisiteIds.length === 0) return;
-    await em
-      .getRepository(MoviePrerequisite)
-      .insert(prerequisiteIds.map((prerequisiteId) => ({ movieId, prerequisiteId })));
+  private removeDuplicates(ids: number[]): number[] {
+    const result: number[] = [];
+    for (const id of ids) {
+      if (!result.includes(id)) result.push(id);
+    }
+    return result;
   }
-
-  private notFound(id: number) {
-    return new ApiError(HttpStatus.NOT_FOUND, 'MOVIE_NOT_FOUND', `Movie ${id} not found`);
-  }
-
-  private circular() {
-    return new ApiError(
-      HttpStatus.CONFLICT,
-      'CIRCULAR_DEPENDENCY',
-      'This change would make the movie depend on itself, directly or through other movies',
-    );
-  }
-}
-
-function unique(ids: number[]): number[] {
-  return [...new Set(ids)];
-}
-
-function compareByRelease(a: Movie, b: Movie): number {
-  return a.releaseYear - b.releaseYear || a.id - b.id;
-}
-
-function buildGraph(
-  links: MoviePrerequisite[],
-  order?: (a: number, b: number) => number,
-): Map<number, number[]> {
-  const graph = new Map<number, number[]>();
-  for (const { movieId, prerequisiteId } of links) {
-    const list = graph.get(movieId) ?? [];
-    list.push(prerequisiteId);
-    graph.set(movieId, list);
-  }
-  if (order) for (const list of graph.values()) list.sort(order);
-  return graph;
 }

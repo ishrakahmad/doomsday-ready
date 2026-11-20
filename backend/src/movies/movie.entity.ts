@@ -5,13 +5,13 @@ export class Movie {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 200 })
+  @Column({ type: 'varchar', length: 200, unique: true })
   title: string;
 
   @Column({ name: 'release_year', type: 'int' })
   releaseYear: number;
 
-
+  // minutes
   @Column({ type: 'int' })
   runtime: number;
 

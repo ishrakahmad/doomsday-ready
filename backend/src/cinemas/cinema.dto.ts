@@ -12,16 +12,14 @@ import {
   Min,
 } from 'class-validator';
 import { BundleLine } from '../algorithms/bundle-quote';
-import { Trim } from '../common/trim';
 
 export class CreateCinemaDto {
-  @Trim()
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
   name: string;
 
-  /** 1–10 different sizes, each 1–500 seats. */
+  
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(10)
@@ -50,7 +48,7 @@ export interface BookingQuoteView {
   cinema: CinemaView;
   groupSize: number;
   possible: boolean;
-  
+
   totalBundles: number | null;
 
   bundles: BundleLine[];

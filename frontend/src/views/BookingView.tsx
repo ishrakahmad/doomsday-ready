@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent, type ReactElement } from 'react'
 import { api, errorMessage, type BookingQuote, type Cinema } from '../api'
 import { Notice } from '../components/Notice'
 import { joinTitles, plural } from '../format'
@@ -18,7 +18,11 @@ export function BookingView() {
     try {
       const list = await api.listCinemas()
       setCinemas(list)
-      setCinemaId((current) => selectId ?? current ?? list[0]?.id ?? null)
+      if (selectId !== undefined) {
+        setCinemaId(selectId)
+      } else if (cinemaId === null && list.length > 0) {
+        setCinemaId(list[0].id)
+      }
     } catch (err) {
       setError(errorMessage(err))
     }
@@ -28,7 +32,10 @@ export function BookingView() {
     void loadCinemas()
   }, [])
 
-  const cinema = cinemas?.find((c) => c.id === cinemaId) ?? null
+  let cinema: Cinema | null = null
+  if (cinemas) {
+    cinema = cinemas.find((c) => c.id === cinemaId) || null
+  }
 
   const getQuote = async (e: FormEvent) => {
     e.preventDefault()
@@ -135,7 +142,13 @@ function QuoteResult({ quote }: { quote: BookingQuote }) {
 
   const drawSeats = quote.groupSize <= MAX_DRAWN_SEATS
 
-  const blocks = quote.bundles.flatMap((b) => Array.from({ length: b.count }, () => b.size))
+  // One block for each bundle to buy [5, 2, 2, 2]
+  const blocks: number[] = []
+  for (const b of quote.bundles) {
+    for (let i = 0; i < b.count; i++) {
+      blocks.push(b.size)
+    }
+  }
 
   return (
     <div className="quote" role="status">
@@ -160,11 +173,7 @@ function QuoteResult({ quote }: { quote: BookingQuote }) {
         <div className="seat-map" aria-hidden="true">
           {blocks.map((size, i) => (
             <div key={i} className="seat-block" style={{ animationDelay: `${Math.min(i, 20) * 60}ms` }}>
-              <div className="seat-row">
-                {Array.from({ length: size }, (_, s) => (
-                  <span key={s} className="seat" />
-                ))}
-              </div>
+              <SeatRow seats={size} />
               <span className="seat-caption">{size} seats</span>
             </div>
           ))}
@@ -219,4 +228,12 @@ function AddCinemaForm({ onCreated }: { onCreated: (c: Cinema) => void }) {
       </button>
     </form>
   )
+}
+
+function SeatRow({ seats }: { seats: number }) {
+  const items: ReactElement[] = []
+  for (let i = 0; i < seats; i++) {
+    items.push(<span key={i} className="seat" />)
+  }
+  return <div className="seat-row">{items}</div>
 }

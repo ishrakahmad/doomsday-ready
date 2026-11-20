@@ -1,6 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-
 export class InitialSchema1732100000000 implements MigrationInterface {
   name = 'InitialSchema1732100000000';
 
@@ -8,36 +7,30 @@ export class InitialSchema1732100000000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE movies (
         id            SERIAL PRIMARY KEY,
-        title         VARCHAR(200) NOT NULL CHECK (length(btrim(title)) > 0),
-        release_year  INTEGER      NOT NULL CHECK (release_year BETWEEN 1888 AND 2100),
-        runtime       INTEGER      NOT NULL CHECK (runtime BETWEEN 1 AND 300),
+        title         VARCHAR(200) NOT NULL UNIQUE,
+        release_year  INTEGER      NOT NULL,
+        runtime       INTEGER      NOT NULL,
         watched       BOOLEAN      NOT NULL DEFAULT FALSE,
         created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE UNIQUE INDEX movies_title_unique ON movies (lower(title))`);
 
     await queryRunner.query(`
       CREATE TABLE movie_prerequisites (
         movie_id         INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
         prerequisite_id  INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
-        PRIMARY KEY (movie_id, prerequisite_id),
-        CHECK (movie_id <> prerequisite_id)
+        PRIMARY KEY (movie_id, prerequisite_id)
       )
     `);
-    await queryRunner.query(
-      `CREATE INDEX movie_prerequisites_prerequisite_idx ON movie_prerequisites (prerequisite_id)`,
-    );
 
     await queryRunner.query(`
       CREATE TABLE cinemas (
         id            SERIAL PRIMARY KEY,
-        name          VARCHAR(200) NOT NULL CHECK (length(btrim(name)) > 0),
-        bundle_sizes  INTEGER[]    NOT NULL CHECK (cardinality(bundle_sizes) BETWEEN 1 AND 10),
+        name          VARCHAR(200) NOT NULL UNIQUE,
+        bundle_sizes  INTEGER[]    NOT NULL,
         created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE UNIQUE INDEX cinemas_name_unique ON cinemas (lower(name))`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

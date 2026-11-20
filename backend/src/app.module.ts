@@ -3,9 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cinema } from './cinemas/cinema.entity';
 import { CinemasModule } from './cinemas/cinemas.module';
 import { InitialSchema1732100000000 } from './database/migrations/1732100000000-InitialSchema';
-import { SeedOnStart } from './database/seed';
 import { Movie, MoviePrerequisite } from './movies/movie.entity';
 import { MoviesModule } from './movies/movies.module';
+
 
 @Controller('health')
 class HealthController {
@@ -22,13 +22,12 @@ class HealthController {
       url: process.env.DATABASE_URL ?? 'postgres://doomsday:doomsday@localhost:5432/doomsday',
       entities: [Movie, MoviePrerequisite, Cinema],
       migrations: [InitialSchema1732100000000],
-      migrationsRun: true, // schema is created
+      migrationsRun: true, 
       synchronize: false,
     }),
     MoviesModule,
     CinemasModule,
   ],
   controllers: [HealthController],
-  providers: [SeedOnStart],
 })
 export class AppModule {}
